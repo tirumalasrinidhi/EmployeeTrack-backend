@@ -37,8 +37,7 @@ COPY --from=builder /app/target/*.jar app.jar
 # Render injects PORT automatically; default 8080 for local testing
 EXPOSE 8080
 
-# Start with prod profile; Render provides env vars at runtime
-ENTRYPOINT ["java", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-prod}", \
-  "-jar", "app.jar"]
+# IMPORTANT: Use shell form (not exec/JSON form) so that ${SPRING_PROFILES_ACTIVE:-prod}
+# is expanded by /bin/sh at container start. In JSON/exec form the JVM receives the literal
+# string "${SPRING_PROFILES_ACTIVE:-prod}" and Spring activates the wrong profile.
+ENTRYPOINT ["sh", "-c", "java -Djava.security.egd=file:/dev/./urandom -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-prod} -jar app.jar"]
