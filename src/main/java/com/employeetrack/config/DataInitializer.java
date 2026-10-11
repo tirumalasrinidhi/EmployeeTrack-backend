@@ -85,7 +85,9 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(admin);
             log.info("✅ Admin user created: {}", adminEmail);
         } else {
-            log.info("Admin account already exists — skipping.");
+            // Sync password: if env var changed (or was empty on first deploy), re-hash.
+            // This prevents "Invalid email or password" when the stored hash is stale/wrong.
+            syncPasswordIfChanged(adminEmail, adminPassword, "Admin");
         }
 
         // HR
@@ -100,7 +102,8 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(hr);
             log.info("✅ HR user created: {}", hrEmail);
         } else {
-            log.info("HR account already exists — skipping.");
+            // Sync password: same reason as above.
+            syncPasswordIfChanged(hrEmail, hrPassword, "HR");
         }
 
         // Sample Employee
@@ -171,5 +174,25 @@ public class DataInitializer implements CommandLineRunner {
             employeeRepository.save(emp);
             log.info("Sample employee created: {} / {}", empId, email);
         }
+    }
+
+    /**
+     * Compares the current configured plain-text password against the BCrypt hash
+     * stored in the DB. If they don't match (e.g. env var was empty/wrong on first
+     * deploy and has since been fixed), updates the hash so the correct password works.
+     *
+     * This is idempotent: if the hash already matches, nothing is written.
+     */
+    private void syncPasswordIfChanged(String email, String configuredPassword, String label) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (!passwordEncoder.matches(configuredPassword, user.getPassword())) {
+                user.setPassword(passwordEncoder.encode(configuredPassword));
+                userRepository.save(user);
+                log.warn("⚠️  {} password hash was stale/wrong — updated to match current env var. " +
+                         "Login will now work with the configured password.", label);
+            } else {
+                log.info("{} password hash is current — no update needed.", label);
+            }
+        });
     }
 }

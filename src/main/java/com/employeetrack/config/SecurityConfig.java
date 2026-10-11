@@ -80,7 +80,18 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        // NOTE: wildcard "*" is NOT allowed when allowCredentials=true (CORS spec §3.2).
+        // Browsers reject such responses — this was the root cause of the empty department
+        // dropdown and blocked login requests from the Vercel frontend.
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+            "Cache-Control",
+            "Pragma"
+        ));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         configuration.setAllowCredentials(true);
 
