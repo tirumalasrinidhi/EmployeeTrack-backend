@@ -130,10 +130,9 @@ public class AuthService {
             .orElseThrow(() -> new RuntimeException("User not found"));
 
         Long employeeId = null;
-        if (user.getRole() == User.Role.EMPLOYEE) {
-            Optional<Employee> emp = employeeRepository.findByUser(user);
-            if (emp.isPresent()) employeeId = emp.get().getId();
-        }
+        // Fetch employeeId for all roles — Admin/HR may also have an Employee record
+        Optional<Employee> emp = employeeRepository.findByUser(user);
+        if (emp.isPresent()) employeeId = emp.get().getId();
 
         String token = jwtService.generateToken(user);
 

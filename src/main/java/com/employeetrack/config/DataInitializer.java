@@ -8,6 +8,7 @@ import com.employeetrack.repository.EmployeeRepository;
 import com.employeetrack.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,16 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Seeds the database with default Admin, HR accounts and sample employees
+ * on first startup. Runs every startup but is IDEMPOTENT (checks before creating).
+ *
+ * Credentials are configurable via environment variables set in Render dashboard:
+ *   ADMIN_EMAIL      (default: admin@employeetrack.com)
+ *   ADMIN_PASSWORD   (default: Admin@123)
+ *   HR_EMAIL         (default: hr@employeetrack.com)
+ *   HR_PASSWORD      (default: HR@123)
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -24,6 +35,20 @@ public class DataInitializer implements CommandLineRunner {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
+
+    // Admin credentials — override via Render env vars for security
+    @Value("${ADMIN_EMAIL:admin@employeetrack.com}")
+    private String adminEmail;
+
+    @Value("${ADMIN_PASSWORD:Admin@123}")
+    private String adminPassword;
+
+    // HR credentials — override via Render env vars for security
+    @Value("${HR_EMAIL:hr@employeetrack.com}")
+    private String hrEmail;
+
+    @Value("${HR_PASSWORD:HR@123}")
+    private String hrPassword;
 
     @Override
     public void run(String... args) {
@@ -49,29 +74,33 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initUsers() {
         // Admin
-        if (!userRepository.existsByEmail("admin@employeetrack.com")) {
+        if (!userRepository.existsByEmail(adminEmail)) {
             User admin = User.builder()
                 .name("System Administrator")
-                .email("admin@employeetrack.com")
-                .password(passwordEncoder.encode("Admin@123"))
+                .email(adminEmail)
+                .password(passwordEncoder.encode(adminPassword))
                 .role(User.Role.ADMIN)
                 .enabled(true)
                 .build();
             userRepository.save(admin);
-            log.info("Admin user created.");
+            log.info("✅ Admin user created: {}", adminEmail);
+        } else {
+            log.info("Admin account already exists — skipping.");
         }
 
         // HR
-        if (!userRepository.existsByEmail("hr@employeetrack.com")) {
+        if (!userRepository.existsByEmail(hrEmail)) {
             User hr = User.builder()
                 .name("HR Manager")
-                .email("hr@employeetrack.com")
-                .password(passwordEncoder.encode("HR@123"))
+                .email(hrEmail)
+                .password(passwordEncoder.encode(hrPassword))
                 .role(User.Role.HR)
                 .enabled(true)
                 .build();
             userRepository.save(hr);
-            log.info("HR user created.");
+            log.info("✅ HR user created: {}", hrEmail);
+        } else {
+            log.info("HR account already exists — skipping.");
         }
 
         // Sample Employee
