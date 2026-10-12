@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
+
+    private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
@@ -100,7 +103,7 @@ public class AttendanceService {
     @Transactional
     public AttendanceDTO checkIn() {
         Employee employee = getCurrentEmployee();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(INDIA_ZONE);
 
         Optional<Attendance> existing = attendanceRepository.findByEmployeeAndDate(employee, today);
         if (existing.isPresent() && existing.get().getCheckIn() != null) {
@@ -112,7 +115,7 @@ public class AttendanceService {
             .date(today)
             .build());
 
-        attendance.setCheckIn(LocalTime.now());
+        attendance.setCheckIn(LocalTime.now(INDIA_ZONE));
         attendance.setStatus(Attendance.AttendanceStatus.PRESENT);
         return toDTO(attendanceRepository.save(attendance));
     }
@@ -120,7 +123,7 @@ public class AttendanceService {
     @Transactional
     public AttendanceDTO checkOut() {
         Employee employee = getCurrentEmployee();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(INDIA_ZONE);
 
         Attendance attendance = attendanceRepository.findByEmployeeAndDate(employee, today)
             .orElseThrow(() -> new RuntimeException("No check-in found for today"));
@@ -132,7 +135,7 @@ public class AttendanceService {
             throw new RuntimeException("Already checked out today");
         }
 
-        LocalTime checkOutTime = LocalTime.now();
+        LocalTime checkOutTime = LocalTime.now(INDIA_ZONE);
         attendance.setCheckOut(checkOutTime);
 
         // Store working_hours in the DB with full precision (no rounding to 2dp)
